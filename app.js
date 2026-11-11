@@ -86,6 +86,7 @@
       taken: {},
       appointments: [],
       questions: [],
+      askHistory: [],
       settings: { dark: false, notify: false }
     };
   }
@@ -725,6 +726,249 @@
     `;
   }
 
+
+  const AI_KEY = "my-doctor-ai-v1";
+  const AI_PROVIDERS = [
+    {
+      id: "xai",
+      label: "xAI (Grok)",
+      hint: "Get a key from console.x.ai. It is stored only on this device and is sent only to xAI when you ask."
+    },
+    {
+      id: "anthropic",
+      label: "Anthropic (Claude)",
+      hint: "Get a key from console.anthropic.com. It is stored only on this device and is sent only to Anthropic when you ask."
+    }
+  ];
+
+  function loadAi() {
+    try {
+      return Object.assign({ provider: "xai", keys: {} }, JSON.parse(localStorage.getItem(AI_KEY) || "{}"));
+    } catch {
+      return { provider: "xai", keys: {} };
+    }
+  }
+  function saveAi(cfg) { localStorage.setItem(AI_KEY, JSON.stringify(cfg)); }
+  function clearAi() { localStorage.removeItem(AI_KEY); }
+
+  function systemPrompt() {
+    return "You are a general health information helper in the My Doctor app. Speak in short, plain English. You are not a doctor and you do not diagnose, prescribe, or give personal medical advice. If the question sounds like an emergency (chest pain, trouble breathing, stroke signs, very high blood pressure with symptoms, severe bleeding, or suicidal thoughts), tell the user to call 911 or the local emergency number now and do not keep chatting about it. Encourage the user to talk with their own doctor or pharmacist about their personal situation. Do not ask for a Social Security number, insurance member ID, credit card, bank number, or password. If saved readings or medicines are included, treat them as background only and do not invent values.";
+  }
+
+  function healthContext() {
+    const lines = [];
+    const readings = [...(state.readings || [])].slice(-10);
+    if (readings.length) {
+      lines.push("Recent blood pressure readings (newest last), stored by the user:");
+      readings.slice().reverse().slice(0, 8).reverse().forEach((r) => {
+        lines.push(`- ${r.sys}/${r.dia}` + (r.pulse ? ` pulse ${r.pulse}` : "") + (r.at ? ` at ${r.at}` : ""));
+      });
+    }
+    if (state.meds && state.meds.length) {
+      lines.push("Medicines the user has saved on this device:");
+      state.meds.forEach((m) => {
+        lines.push(`- ${m.name}` + (m.dose ? ` ${m.dose}` : "") + (m.purpose ? ` (${m.purpose})` : "") + (m.times && m.times.length ? `; times ${m.times.join(", ")}` : ""));
+      });
+    }
+    return lines.join("\n");
+  }
+
+  async function askProvider(provider, key, question, includeCtx) {
+    const sys = systemPrompt() + (includeCtx && healthContext() ? "\n\n" + healthContext() : "");
+    if (provider === "xai") {
+      const r = await fetch("https://api.x.ai/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + key, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "grok-3",
+          temperature: 0.3,
+          messages: [
+            { role: "system", content: sys },
+            { role: "user", content: question }
+          ]
+        })
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.error || data.message || ("xAI error " + r.status));
+      const text = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+      if (!text) throw new Error("The service returned an empty answer.");
+      return String(text);
+    }
+    if (provider === "anthropic") {
+      const r = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": key,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-5",
+          max_tokens: 800,
+          system: sys,
+          messages: [{ role: "user", content: question }]
+        })
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error((data.error && data.error.message) || data.message || ("Anthropic error " + r.status));
+      const text = (data.content || []).filter((c) => c.type === "text").map((c) => c.text).join("\n").trim();
+      if (!text) throw new Error("The service returned an empty answer.");
+      return text;
+    }
+    throw new Error("That service is not available in this app.");
+  }
+
+  let askQuery = "";
+  let askTopic = "";
+  let askBusy = false;
+  let askError = "";
+  let askDraft = "";
+
+  function renderAnswerCard(a, queryText) {
+    const body = a.body.map((para) => `<p>${esc(para)}</p>`).join("");
+    return `<article class="card answer">
+      <div class="hint" style="margin:0 0 4px">${esc(a.topic)}</div>
+      <h3>${esc(a.title)}</h3>
+      <div class="body">${body}</div>
+      <p class="source">Source: <a href="${esc(a.sourceUrl)}" target="_blank" rel="noopener">${esc(a.sourceName)}</a></p>
+      <button type="button" data-save-lib="${esc(a.id)}" data-q="${esc(queryText || a.title)}">Save this topic to For my doctor</button>
+    </article>`;
+  }
+
+  function renderAsk() {
+    const topics = [...new Set((window.MY_DOCTOR_LIBRARY || []).map((a) => a.topic))];
+    const q = askQuery;
+    let results;
+    if (askTopic && !q) {
+      results = (window.MY_DOCTOR_LIBRARY || []).filter((a) => a.topic === askTopic).map((a, i) => ({ a, score: 1, i }));
+    } else if (q) {
+      results = (window.searchDoctorLibrary ? window.searchDoctorLibrary(q) : []).slice(0, 8);
+      if (askTopic) results = results.filter((x) => x.a.topic === askTopic);
+    } else {
+      results = (window.MY_DOCTOR_LIBRARY || []).map((a, i) => ({ a, score: 0, i }));
+    }
+    const chips = topics.map((t) =>
+      `<button type="button" data-topic="${esc(t)}" class="${askTopic === t ? "on" : ""}">${esc(t)}</button>`
+    ).join("");
+    const list = results.length
+      ? results.map((x) => renderAnswerCard(x.a, q)).join("")
+      : `<p class="empty">No close match in the built-in library. Try fewer words, pick a topic above, or use Ask AI if you have added your own key.</p>`;
+
+    const cfg = loadAi();
+    const prov = AI_PROVIDERS.find((p) => p.id === (cfg.provider || "xai")) || AI_PROVIDERS[0];
+    const hasKey = !!(cfg.keys && cfg.keys[prov.id]);
+    const hist = (state.askHistory || []).slice().reverse();
+    const histHtml = hist.length
+      ? hist.map((h) => `<article class="item">
+          <div class="head"><div>
+            <h3>${esc(h.q)}</h3>
+            <div class="hint" style="margin:0">${esc(h.at ? formatWhen(h.at) : "")} · ${esc(h.provider || "Library")}</div>
+            <p style="white-space:pre-wrap">${esc((h.a || "").slice(0, 1200))}${(h.a || "").length > 1200 ? "…" : ""}</p>
+          </div>
+          <div class="row">
+            <button type="button" data-save-hist="${esc(h.id)}">Save to For my doctor</button>
+            <button type="button" class="danger" data-del-hist="${esc(h.id)}">Remove</button>
+          </div></div>
+        </article>`).join("")
+      : `<p class="hint">Answers you get from Ask AI will show up here, on this device only.</p>`;
+
+    return `
+      <h1>Ask a health question</h1>
+      <p class="lede">Type a question to search a built-in library of plain-English answers from trusted sources such as NIH, CDC, MedlinePlus, Medicare.gov, and the U.S. Preventive Services Task Force. This is general information, not a diagnosis or a substitute for your doctor. For a list of questions to take to a visit, use the <button type="button" class="icon-btn" data-go="questions">For my doctor</button> tab.</p>
+      <section class="card">
+        <form id="askSearchForm">
+          <label class="label" for="askQ">Your question</label>
+          <div class="ask-box">
+            <input id="askQ" maxlength="300" placeholder="For example: What does 130 over 72 mean?" value="${esc(q)}" autocomplete="off">
+            <button type="submit" class="primary">Search</button>
+          </div>
+        </form>
+        <div class="chips">${chips}<button type="button" data-topic="" class="${!askTopic ? "on" : ""}">All topics</button></div>
+        ${q ? `<p class="hint">${results.length} match${results.length === 1 ? "" : "es"} for “${esc(q)}.”</p>` : `<p class="hint">Or browse a topic. You do not need an internet account to use this library — it is built into the app.</p>`}
+      </section>
+      <div id="askResults">${list}</div>
+      <section class="card">
+        <h2 style="margin-top:0">Ask AI (optional)</h2>
+        <p>If the library does not cover your question, you can send it to an AI service using a key you provide. Your key stays in this browser. It is never copied into a backup file, and it is sent only to the company you choose when you tap Ask AI.</p>
+        <p class="hint">OpenAI is not listed because its chat service blocked requests from a web page in our tests. xAI and Anthropic did work from the browser.</p>
+        <form id="aiKeyForm" class="key-row">
+          ${field("Service", `<select id="aiProvider">${AI_PROVIDERS.map((p) => `<option value="${p.id}" ${p.id === prov.id ? "selected" : ""}>${esc(p.label)}</option>`).join("")}</select>`)}
+          <p class="hint" id="aiHint">${esc(prov.hint)}</p>
+          ${field("Your API key", `<input id="aiKey" type="password" maxlength="200" autocomplete="off" spellcheck="false" placeholder="${hasKey ? "A key is saved on this device" : "Paste a key only if you want Ask AI"}">`)}
+          <div class="row">
+            <button type="submit" class="primary">Save key on this device</button>
+            <button type="button" id="aiRemoveKey" class="${hasKey ? "" : "hidden"}">Remove key</button>
+          </div>
+        </form>
+        <form id="aiAskForm">
+          ${field("Question for AI", `<textarea id="aiQ" maxlength="1000" placeholder="Type any health question">${esc(askDraft)}</textarea>`)}
+          <label class="chk"><input type="checkbox" id="aiCtx"> Include my saved blood pressure readings and medicine list as background. Names, phone numbers, and notes are not sent — only readings and medicines you typed in this app.</label>
+          <button type="submit" class="primary" ${hasKey ? "" : "disabled"}>${askBusy ? "Asking…" : "Ask AI"}</button>
+          ${hasKey ? "" : `<p class="hint">Save a key first if you want to use Ask AI. The built-in library above works without one.</p>`}
+        </form>
+        <div id="aiStatus">${askError ? `<p class="callout warn">${esc(askError)}</p>` : ""}</div>
+      </section>
+      <h2>Answers you have received</h2>
+      ${histHtml}
+    `;
+  }
+
+  function onAskSearch(e) {
+    e.preventDefault();
+    askQuery = ($("askQ") && $("askQ").value || "").trim();
+    render();
+    const first = document.querySelector("#askResults .answer");
+    if (first) first.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function onSaveKey(e) {
+    e.preventDefault();
+    const cfg = loadAi();
+    cfg.provider = $("aiProvider").value;
+    const key = ($("aiKey").value || "").trim();
+    cfg.keys = cfg.keys || {};
+    if (key) cfg.keys[cfg.provider] = key;
+    saveAi(cfg);
+    $("aiKey").value = "";
+    render();
+  }
+
+  async function onAskAI(e) {
+    e.preventDefault();
+    if (askBusy) return;
+    const q = ($("aiQ").value || "").trim();
+    if (!q) return;
+    askDraft = q;
+    const cfg = loadAi();
+    const provider = $("aiProvider") ? $("aiProvider").value : cfg.provider;
+    cfg.provider = provider;
+    saveAi(cfg);
+    const key = (cfg.keys && cfg.keys[provider]) || "";
+    if (!key) { askError = "Save an API key for that service first."; render(); return; }
+    const includeCtx = !!($("aiCtx") && $("aiCtx").checked);
+    askBusy = true; askError = ""; render();
+    try {
+      const answer = await askProvider(provider, key, q, includeCtx);
+      state.askHistory = state.askHistory || [];
+      state.askHistory.push({
+        id: uid(),
+        q,
+        a: answer,
+        provider: AI_PROVIDERS.find((p) => p.id === provider)?.label || provider,
+        at: new Date().toISOString()
+      });
+      save();
+      askDraft = "";
+      askBusy = false;
+      render();
+    } catch (err) {
+      askBusy = false;
+      askError = "Could not get an answer. " + (err && err.message ? err.message : "Please check your key and try again.");
+      render();
+    }
+  }
+
   function renderQuestions() {
     const apptOpts = `<option value="">Not tied to a visit</option>` +
       [...state.appointments].sort((a, b) => new Date(b.at) - new Date(a.at)).map((a) =>
@@ -742,7 +986,7 @@
     };
     return `
       <h1>Questions for my doctor</h1>
-      <p class="lede">Keep a running list so you do not forget what to ask. You can tag a question to a visit and check it off after you ask it.</p>
+      <p class="lede">This is your list to take to a visit. You can tag a question to an appointment and check it off after you ask it. To type a question and get an answer now, open the <button type="button" class="icon-btn" data-go="ask">Ask</button> tab.</p>
       <section class="card">
         <h3>Starter questions</h3>
         <p class="hint">Tap one to add it to your list. You can edit the wording after it is added, or remove it if you do not need it.</p>
@@ -838,7 +1082,7 @@
   function render() {
     applyTheme();
     const main = $("main");
-    const pages = { doctors: renderDoctors, bp: renderBP, meds: renderMeds, visits: renderVisits, questions: renderQuestions, more: renderMore };
+    const pages = { doctors: renderDoctors, bp: renderBP, meds: renderMeds, visits: renderVisits, ask: renderAsk, questions: renderQuestions, more: renderMore };
     main.innerHTML = (pages[view] || renderDoctors)();
     document.querySelectorAll(".tabs button").forEach((b) => {
       b.classList.toggle("on", b.getAttribute("data-go") === view);
@@ -880,6 +1124,25 @@
       if (when && !when.value) when.value = defaultLocalValue();
       $("apptForm")?.addEventListener("submit", onSaveAppt);
       $("apptCancel")?.addEventListener("click", () => { clearApptForm(); });
+    }
+    if (view === "ask") {
+      $("askSearchForm")?.addEventListener("submit", onAskSearch);
+      $("aiKeyForm")?.addEventListener("submit", onSaveKey);
+      $("aiAskForm")?.addEventListener("submit", onAskAI);
+      $("aiProvider")?.addEventListener("change", () => {
+        const cfg = loadAi();
+        cfg.provider = $("aiProvider").value;
+        saveAi(cfg);
+        render();
+      });
+      $("aiRemoveKey")?.addEventListener("click", () => {
+        const cfg = loadAi();
+        const id = $("aiProvider").value;
+        if (cfg.keys) delete cfg.keys[id];
+        saveAi(cfg);
+        render();
+      });
+      $("aiQ")?.addEventListener("input", () => { askDraft = $("aiQ").value; });
     }
     if (view === "questions") {
       $("qForm")?.addEventListener("submit", onSaveQuestion);
@@ -1087,6 +1350,7 @@
         next.taken = d.taken && typeof d.taken === "object" ? d.taken : {};
         next.appointments = Array.isArray(d.appointments) ? d.appointments : [];
         next.questions = Array.isArray(d.questions) ? d.questions : [];
+        next.askHistory = Array.isArray(d.askHistory) ? d.askHistory : [];
         next.settings = Object.assign(empty().settings, d.settings || {});
         state = next;
         save();
@@ -1190,6 +1454,37 @@
     if (icsa) {
       const a = state.appointments.find((x) => x.id === icsa.getAttribute("data-ics-appt"));
       if (a) apptIcs(a);
+      return;
+    }
+    const topicBtn = e.target.closest("[data-topic]");
+    if (topicBtn && topicBtn.hasAttribute("data-topic")) {
+      askTopic = topicBtn.getAttribute("data-topic") || "";
+      if ($("askQ")) askQuery = $("askQ").value.trim();
+      render();
+      return;
+    }
+    const sl = e.target.closest("[data-save-lib]");
+    if (sl) {
+      const id = sl.getAttribute("data-save-lib");
+      const art = (window.MY_DOCTOR_LIBRARY || []).find((a) => a.id === id);
+      const text = art ? ("Ask my doctor about: " + art.title) : sl.getAttribute("data-q");
+      if (text) addStarter(text);
+      view = "questions";
+      render();
+      return;
+    }
+    const sh = e.target.closest("[data-save-hist]");
+    if (sh) {
+      const h = (state.askHistory || []).find((x) => x.id === sh.getAttribute("data-save-hist"));
+      if (h) addStarter(h.q);
+      view = "questions";
+      render();
+      return;
+    }
+    const dh = e.target.closest("[data-del-hist]");
+    if (dh) {
+      state.askHistory = (state.askHistory || []).filter((x) => x.id !== dh.getAttribute("data-del-hist"));
+      save(); render();
       return;
     }
     const st = e.target.closest("[data-starter]");

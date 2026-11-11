@@ -2,7 +2,7 @@
 
 A simple, installable web app for Phillip Alvaranga in Frisco, TX.
 
-Use it to find doctors near Frisco, track blood pressure, keep a medicine list with reminders, save appointments and visit notes, and jot down questions for your doctor.
+Use it to find doctors near Frisco, track blood pressure, keep a medicine list with reminders, save appointments and visit notes, jot down questions for your doctor, and look up plain-English answers in the Ask tab.
 
 **Live:** https://phillipalvaranga-arch.github.io/doctor-app/
 

@@ -1,9 +1,10 @@
-const C = 'mydoctor-v1';
+const C = 'mydoctor-v2';
 const F = [
   './',
   'index.html',
   'style.css',
   'app.js',
+  'answers.js',
   'manifest.webmanifest',
   'icons/icon-192.png',
   'icons/icon-512.png',
