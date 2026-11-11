@@ -1,0 +1,17 @@
+{
+  "name": "My Doctor",
+  "short_name": "My Doctor",
+  "description": "Find doctors near Frisco, and keep blood pressure, medicines, appointments, and visit questions on this device.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f3faf8",
+  "theme_color": "#0f7a73",
+  "orientation": "any",
+  "lang": "en",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

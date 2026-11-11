@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>My Doctor</title>
+  <meta name="description" content="Find doctors near Frisco, TX, and keep blood pressure, medicines, appointments, and visit questions on this device.">
+  <meta name="theme-color" content="#0f7a73">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="My Doctor">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/favicon.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="top">
+    <div class="brand">
+      <img src="icons/icon-192.png" alt="" width="40" height="40">
+      <div>
+        <b>My Doctor</b>
+        <small>Frisco, TX · saved on this device only</small>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button type="button" id="themeBtn" class="icon-btn" aria-pressed="false" title="Turn dark mode on">Dark mode</button>
+      <button type="button" id="moreBtn" class="icon-btn" data-go="more">More</button>
+    </div>
+  </header>
+  <p class="banner-note">This app is not medical advice. In an emergency, call <a href="tel:911">911</a>.</p>
+  <div id="alertBar" class="alert-bar hidden" role="status"></div>
+  <main id="main"></main>
+  <nav class="tabs" aria-label="Main sections">
+    <button type="button" data-go="doctors">Doctors</button>
+    <button type="button" data-go="bp">Pressure</button>
+    <button type="button" data-go="meds">Medicines</button>
+    <button type="button" data-go="visits">Visits</button>
+    <button type="button" data-go="questions">Questions</button>
+  </nav>
+  <script src="app.js"></script>
+</body>
+</html>
