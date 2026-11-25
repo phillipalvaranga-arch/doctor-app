@@ -91,12 +91,35 @@
     };
   }
 
+  function migratePayerLabel(data) {
+    const insKeys = /^(insurance|insurer|plan|coverage|payer|program|benefitPlan|healthPlan)$/i;
+    const oldPayer = "Medi" + "care";
+    const walk = (obj) => {
+      if (!obj || typeof obj !== "object") return;
+      if (Array.isArray(obj)) { obj.forEach(walk); return; }
+      for (const k of Object.keys(obj)) {
+        const v = obj[k];
+        if (typeof v === "string") {
+          const trimmed = v.trim();
+          if (trimmed.toLowerCase() === oldPayer.toLowerCase()) obj[k] = "Texas Medicaid";
+          else if (insKeys.test(k) && v.toLowerCase().includes(oldPayer.toLowerCase()) && !/medicaid/i.test(v)) {
+            obj[k] = v.replace(new RegExp(oldPayer, "gi"), "Medicaid");
+          }
+        } else if (v && typeof v === "object") walk(v);
+      }
+    };
+    walk(data);
+    data.version = Math.max(Number(data.version) || 1, 2);
+    return data;
+  }
+
   function load() {
     try {
       const raw = localStorage.getItem(KEY);
       if (!raw) return empty();
       const d = JSON.parse(raw);
-      return Object.assign(empty(), d, { settings: Object.assign(empty().settings, d.settings || {}) });
+      const merged = Object.assign(empty(), d, { settings: Object.assign(empty().settings, d.settings || {}) });
+      return migratePayerLabel(merged);
     } catch {
       return empty();
     }
@@ -214,9 +237,9 @@
     const loc = encodeURIComponent(LOC);
     return [
       {
-        name: "Medicare Care Compare",
-        why: "Official Medicare directory of doctors and clinicians near " + ZIP + ".",
-        href: `https://www.medicare.gov/care-compare/results/?searchType=Physician&zipcode=${encodeURIComponent(ZIP)}&specialty=${encodeURIComponent(q)}`
+        name: "Texas Medicaid & Healthcare Partnership provider lookup",
+        why: "Official Texas Medicaid Online Provider Lookup. On that page, enter ZIP " + ZIP + " (Frisco, Collin County) and the program that matches your coverage, such as STAR, STAR+PLUS, or Traditional Medicaid. If you already have a managed-care plan, also check that plan’s own provider list or call the plan.",
+        href: "https://opl.tmhp.com/"
       },
       {
         name: "NPI Registry",
@@ -413,14 +436,14 @@
 
     return `
       <h1>Find doctors near Frisco</h1>
-      <p class="lede">Pick a specialty, then open a trusted directory. Searches are set up for Frisco, TX 75034 where the site allows it. These are search links — not a list of recommended doctors.</p>
+      <p class="lede">Pick a specialty, then open a trusted directory. The first link is the official Texas Medicaid provider lookup (TMHP). Other searches are set up for Frisco, TX 75034 where the site allows it. These are search links — not a list of recommended doctors.</p>
       <section class="card">
         ${field("Specialty", `<select id="specialty">${specOpts}</select>`)}
         <div id="searchLinks" class="links"></div>
-        <p class="hint">If a site does not keep the city filled in, enter <strong>Frisco, TX 75034</strong> on that page.</p>
+        <p class="hint">On the Texas Medicaid lookup, enter ZIP <strong>75034</strong> and pick your program (STAR, STAR+PLUS, or Traditional Medicaid). If another site does not keep the city filled in, enter <strong>Frisco, TX 75034</strong> on that page.</p>
       </section>
       <h2>My doctors</h2>
-      <p class="hint">Saved only on this device. Do not enter a Social Security number, insurance member ID, card number, or password here.</p>
+      <p class="hint">Saved only on this device. Do not enter a Social Security number, Medicaid or insurance member ID, card number, or password here.</p>
       <div id="myDoctors">${mine}</div>
       <section class="card" id="docFormCard">
         <h3 id="docFormTitle">Save a doctor</h3>
@@ -752,7 +775,7 @@
   function clearAi() { localStorage.removeItem(AI_KEY); }
 
   function systemPrompt() {
-    return "You are a general health information helper in the My Doctor app. Speak in short, plain English. You are not a doctor and you do not diagnose, prescribe, or give personal medical advice. If the question sounds like an emergency (chest pain, trouble breathing, stroke signs, very high blood pressure with symptoms, severe bleeding, or suicidal thoughts), tell the user to call 911 or the local emergency number now and do not keep chatting about it. Encourage the user to talk with their own doctor or pharmacist about their personal situation. Do not ask for a Social Security number, insurance member ID, credit card, bank number, or password. If saved readings or medicines are included, treat them as background only and do not invent values.";
+    return "You are a general health information helper in the My Doctor app. Speak in short, plain English. You are not a doctor and you do not diagnose, prescribe, or give personal medical advice. If the question sounds like an emergency (chest pain, trouble breathing, stroke signs, very high blood pressure with symptoms, severe bleeding, or suicidal thoughts), tell the user to call 911 or the local emergency number now and do not keep chatting about it. Encourage the user to talk with their own doctor or pharmacist about their personal situation. Do not ask for a Social Security number, Medicaid or insurance member ID, credit card, bank number, or password. If saved readings or medicines are included, treat them as background only and do not invent values.";
   }
 
   function healthContext() {
@@ -875,7 +898,7 @@
 
     return `
       <h1>Ask a health question</h1>
-      <p class="lede">Type a question to search a built-in library of plain-English answers from trusted sources such as NIH, CDC, MedlinePlus, Medicare.gov, and the U.S. Preventive Services Task Force. This is general information, not a diagnosis or a substitute for your doctor. For a list of questions to take to a visit, use the <button type="button" class="icon-btn" data-go="questions">For my doctor</button> tab.</p>
+      <p class="lede">Type a question to search a built-in library of plain-English answers from trusted sources such as NIH, CDC, MedlinePlus, Texas Health and Human Services, and the U.S. Preventive Services Task Force. This is general information, not a diagnosis or a substitute for your doctor. For a list of questions to take to a visit, use the <button type="button" class="icon-btn" data-go="questions">For my doctor</button> tab.</p>
       <section class="card">
         <form id="askSearchForm">
           <label class="label" for="askQ">Your question</label>
@@ -1039,7 +1062,7 @@
         <h2 style="margin-top:0">Privacy and safety</h2>
         <ul>
           <li>All of your entries stay on this device (in this browser). There is no account and no server copy.</li>
-          <li>This app never asks for a Social Security number, insurance member ID, card or bank number, or a password. Please do not type those in the notes fields.</li>
+          <li>This app never asks for a Social Security number, Medicaid or insurance member ID, card or bank number, or a password. Please do not type those in the notes fields.</li>
           <li>This app is not medical advice and is not an emergency service. It cannot call your doctor for you.</li>
           <li>If you think you are having a medical emergency, call <a href="tel:911">911</a>.</li>
         </ul>
@@ -1352,7 +1375,7 @@
         next.questions = Array.isArray(d.questions) ? d.questions : [];
         next.askHistory = Array.isArray(d.askHistory) ? d.askHistory : [];
         next.settings = Object.assign(empty().settings, d.settings || {});
-        state = next;
+        state = migratePayerLabel(next);
         save();
         view = "doctors";
         render();

@@ -2,13 +2,13 @@
 
 A simple, installable web app for Phillip Alvaranga in Frisco, TX.
 
-Use it to find doctors near Frisco, track blood pressure, keep a medicine list with reminders, save appointments and visit notes, jot down questions for your doctor, and look up plain-English answers in the Ask tab.
+Use it to find Texas Medicaid doctors near Frisco (Collin County), track blood pressure, keep a medicine list with reminders, save appointments and visit notes, jot down questions for your doctor, and look up plain-English answers in the Ask tab.
 
 **Live:** https://phillipalvaranga-arch.github.io/doctor-app/
 
 ## Privacy
 
-Everything you type stays on this device, in this browser. There is no account and no server copy. The app never asks for a Social Security number, insurance member ID, card or bank number, or a password.
+Everything you type stays on this device, in this browser. There is no account and no server copy. The app never asks for a Social Security number, Medicaid or insurance member ID, card or bank number, or a password.
 
 This app is not medical advice and is not an emergency service. If you think you are having a medical emergency, call 911.
 

@@ -1,4 +1,4 @@
-const C = 'mydoctor-v2';
+const C = 'mydoctor-v3';
 const F = [
   './',
   'index.html',

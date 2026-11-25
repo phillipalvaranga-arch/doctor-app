@@ -153,31 +153,33 @@ window.MY_DOCTOR_LIBRARY = [
     sourceUrl: "https://medlineplus.gov/ency/article/007484.htm"
   },
   {
-    id: "medicare-65",
-    topic: "Medicare",
-    title: "When and how do I sign up for Medicare at 65?",
-    keywords: "Medicare 65 sign up enroll initial enrollment period part A part B penalty birthday",
+    id: "medicaid-apply",
+    topic: "Texas Medicaid",
+    title: "What is Texas Medicaid, and how do I apply?",
+    keywords: "Texas Medicaid apply enroll YourTexasBenefits HHSC health coverage benefits 211 eligibility",
     body: [
-      "Medicare.gov says your first chance to sign up is the Initial Enrollment Period. It lasts 7 months: it starts 3 months before the month you turn 65, includes your birthday month, and ends 3 months after that month.",
-      "Coverage start dates depend on when you sign up, and coverage starts on the first of a month. To have Part B start the month you turn 65, you generally need to sign up in the 3 months before your birthday month. If you wait until your birthday month or the 3 months after, Part B usually starts the following month.",
-      "If you already get Social Security benefits at least 4 months before you turn 65, you may get Part A and Part B automatically. If you miss the Initial Enrollment Period, you may have to wait to sign up and could pay a late enrollment penalty for as long as you have Part B.",
-      "People with insurance from a current job (or a spouse’s current job) may be able to delay Part B. Some people with a Health Savings Account also need to plan carefully. Use official tools at Medicare.gov or call 1-800-MEDICARE (1-800-633-4227) to check your own situation."
+      "Texas Medicaid is run by the Texas Health and Human Services Commission (HHSC). HHSC says Medicaid and the Children’s Health Insurance Program (CHIP) provide health coverage for low-income children, families, seniors, and people with disabilities.",
+      "You can apply online at YourTexasBenefits.com, the official HHSC self-service site. You can also call 2-1-1. If you cannot connect, official HHSC materials say to call 1-877-541-7905. After you pick a language, press 2 to ask about benefit programs or get help with an application.",
+      "Eligibility depends on your own situation. This app does not decide whether you qualify and does not list income limits. Use YourTexasBenefits.com or 2-1-1 to check and apply.",
+      "This app will not ask for your Medicaid number, Social Security number, or any insurance member ID. Please do not type those here."
     ],
-    sourceName: "Medicare.gov",
-    sourceUrl: "https://www.medicare.gov/basics/get-started-with-medicare/sign-up/when-does-medicare-coverage-start"
+    sourceName: "Texas Health and Human Services / Your Texas Benefits",
+    sourceUrl: "https://www.yourtexasbenefits.com/"
   },
   {
-    id: "medicare-parts",
-    topic: "Medicare",
-    title: "What are Medicare Part A and Part B?",
-    keywords: "Medicare part A hospital part B medical insurance premium card welcome package",
+    id: "medicaid-find-doctor",
+    topic: "Texas Medicaid",
+    title: "What are STAR and STAR+PLUS, and how do I find a Texas Medicaid doctor?",
+    keywords: "Texas Medicaid STAR STAR+PLUS managed care TMHP provider lookup find doctor Collin Frisco 75034 health plan",
     body: [
-      "Medicare Part A is hospital insurance. It helps cover inpatient hospital care, skilled nursing facility care, hospice, and some home health care. Most people who paid Medicare taxes while they worked do not pay a monthly premium for Part A.",
-      "Medicare Part B is medical insurance. It helps cover doctor and other clinician services, outpatient care, home health care, durable medical equipment, and some preventive services, including certain vaccines and cancer screenings. Most people pay a monthly premium for Part B.",
-      "You can learn how sign-up works and whether you will be enrolled automatically on Medicare.gov. This app will not ask for your Medicare number or any insurance member ID — do not type those here."
+      "HHSC says there are five types of Medicaid in Texas: Traditional Medicaid, STAR, STAR Kids, STAR Health, and STAR+PLUS. The type you get depends on where you live and your health situation. If you do not know what type you have, HHSC says to call 800-964-2777.",
+      "STAR is the largest managed care program in Texas. Most people who receive Medicaid in Texas are enrolled in STAR. HHSC says the program primarily provides services to children, pregnant women, and some families.",
+      "STAR+PLUS is a Texas Medicaid managed care program for adults who have disabilities or are age 65 or older. People in STAR+PLUS get Medicaid health care and long-term services and supports through a health plan they choose. HHSC says you can apply at Your Texas Benefits or by calling 2-1-1.",
+      "To look up providers who participate in Texas Medicaid, use the official Texas Medicaid & Healthcare Partnership Online Provider Lookup at opl.tmhp.com. You can search by health plan, provider type, ZIP code, and distance. For Frisco, enter ZIP 75034 (Collin County) and the program that matches your coverage. The lookup site itself says that if you are already in managed care, you should also use your health plan’s provider list or call your plan.",
+      "This app will not ask for your Medicaid number or any insurance member ID. Please do not type those here."
     ],
-    sourceName: "Medicare.gov",
-    sourceUrl: "https://www.medicare.gov/basics/get-started-with-medicare/sign-up/how-do-i-sign-up-for-medicare"
+    sourceName: "Texas Health and Human Services / Texas Medicaid & Healthcare Partnership",
+    sourceUrl: "https://opl.tmhp.com/"
   },
   {
     id: "prepare-visit",
